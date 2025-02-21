@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Monitoramento MAX30100</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f3f3f3;
+        text-align: center;
+        padding: 20px;
+        transition: background-color 0.5s;
+      }
+
+      #dados {
+        font-size: 24px;
+        margin-top: 20px;
+      }
+
+      .alerta {
+        color: red;
+        font-weight: bold;
+      }
+
+      .ok {
+        color: green;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Monitoramento MAX30100 - BPM e SpO2</h1>
+    <div id="dados">Aguardando dados...</div>
+    <audio id="alertaAudio" src="beep.mp3"></audio>
+
+    <script>
+      const socket = io();
+
+      let alertaAtivo = false;
+      let intervaloPiscar;
+
+      socket.on('dadosSensor', ({ bpm, spo2 }) => {
+        const dadosDiv = document.getElementById('dados');
+        const alertaAudio = document.getElementById('alertaAudio');
+        const body = document.body;
+
+        let alertaMsg = '';
+        let statusClass = 'ok';
+        let temAlerta = false;
+
+        if (bpm < 50 || bpm > 130) {
+          alertaMsg += '⚠️ Frequência cardíaca anormal! ';
+          statusClass = 'alerta';
+          temAlerta = true;
+        }
+
+        if (spo2 < 90) {
+          alertaMsg += '⚠️ Saturação de oxigênio baixa! ';
+          statusClass = 'alerta';
+          temAlerta = true;
+        }
+
+        dadosDiv.innerHTML = `
+          <p>BPM: ${bpm.toFixed(1)} bpm</p>
+          <p>SpO2: ${spo2.toFixed(1)}%</p>
+          <p class="${statusClass}">${alertaMsg || 'Valores Normais'}</p>
+        `;
+
+        // ALERTAS VISUAIS E SONOROS
+        if (temAlerta) {
+          if (!alertaAtivo) {
+            alertaAtivo = true;
+            alertaAudio.play();
+            alert('⚠️ ALERTA: Verificar sinais vitais!');
+            intervaloPiscar = setInterval(() => {
+              body.style.backgroundColor =
+                body.style.backgroundColor === 'red' ? '#f3f3f3' : 'red';
+            }, 500);
+          }
+        } else {
+          if (alertaAtivo) {
+            alertaAtivo = false;
+            clearInterval(intervaloPiscar);
+            body.style.backgroundColor = '#f3f3f3';
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
